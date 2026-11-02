@@ -1,0 +1,177 @@
+// =====================================================================
+//  ISDHIS ACADEMY — Firestore rules
+//
+//  ⚠️  Your Barakaat project already has rules for its other collections
+//      (admin, attendance, cashier, dream-market …).
+//      DO NOT replace your whole rules file with this one.
+//      Copy the two FUNCTIONS and all "match /Isdhis…" blocks below
+//      INSIDE your existing:   match /databases/{database}/documents { … }
+// =====================================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers (copy these) ----------
+    function isdhisDoc(col, id) { return /databases/$(database)/documents/$(col)/$(id); }
+    function isdhisSignedIn() { return request.auth != null; }
+    function isdhisAdmin() {
+      return request.auth != null && exists(isdhisDoc('IsdhisAdminSessions', request.auth.uid));
+    }
+    function isdhisStudent() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+    function isdhisEnrolled(courseId) {
+      return request.auth != null && exists(isdhisDoc('IsdhisEnrollments', request.auth.uid + '_' + courseId));
+    }
+    function isdhisOwns(uid) { return request.auth != null && request.auth.uid == uid; }
+
+    // ---------- admin credentials: never readable from the browser ----------
+    match /IsdhisAdmin/{adminId} {
+      allow read, create, delete: if false;
+      allow update: if isdhisAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['password', 'passwordUpdatedAt']);
+    }
+
+    // A session is only created when username + password match IsdhisAdmin/{adminId}.
+    // The comparison happens here on the server, the password is never sent back to the browser.
+    match /IsdhisAdminSessions/{uid} {
+      allow create: if isdhisOwns(uid)
+        && request.resource.data.adminId is string
+        && exists(isdhisDoc('IsdhisAdmin', request.resource.data.adminId))
+        && get(isdhisDoc('IsdhisAdmin', request.resource.data.adminId)).data.username == request.resource.data.username
+        && get(isdhisDoc('IsdhisAdmin', request.resource.data.adminId)).data.password == request.resource.data.password;
+      allow read, delete: if isdhisOwns(uid);
+      allow update: if false;
+    }
+
+    match /IsdhisSettings/{id} {
+      allow read: if true;
+      allow write: if isdhisAdmin();
+    }
+
+    match /IsdhisCategories/{id} {
+      allow read: if true;
+      allow write: if isdhisAdmin();
+    }
+
+    match /IsdhisUsers/{uid} {
+      allow read: if isdhisAdmin() || isdhisOwns(uid);
+      allow create: if isdhisStudent() && isdhisOwns(uid)
+        && request.resource.data.role == 'student'
+        && request.resource.data.status == 'active';
+      allow update: if isdhisAdmin()
+        || (isdhisOwns(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'photo']));
+      allow delete: if isdhisAdmin();
+    }
+
+    match /IsdhisCourses/{courseId} {
+      allow read: if resource.data.status == 'published' || isdhisAdmin() || isdhisEnrolled(courseId);
+      allow write: if isdhisAdmin();
+    }
+
+    // Lesson metadata (titles, order) is public so the curriculum can be shown.
+    // The actual videos / PDFs / images are protected by Storage rules.
+    match /IsdhisLessons/{lessonId} {
+      allow read: if true;
+      allow write: if isdhisAdmin();
+    }
+
+    match /IsdhisPayments/{id} {
+      allow read: if isdhisAdmin() || (isdhisSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isdhisStudent()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.amount is number;
+      allow update, delete: if isdhisAdmin();
+    }
+
+    match /IsdhisEnrollments/{id} {
+      allow get: if isdhisAdmin() || (isdhisSignedIn() && id.matches(request.auth.uid + '_.+'));
+      allow list: if isdhisAdmin() || (isdhisSignedIn() && resource.data.uid == request.auth.uid);
+      // students may only self-enrol in FREE courses; paid enrolments are created by the admin on approval
+      allow create: if isdhisAdmin() || (
+        isdhisStudent()
+        && request.resource.data.uid == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.courseId
+        && get(isdhisDoc('IsdhisCourses', request.resource.data.courseId)).data.accessType == 'free'
+        && get(isdhisDoc('IsdhisCourses', request.resource.data.courseId)).data.status == 'published'
+      );
+      allow update, delete: if isdhisAdmin();
+    }
+
+    match /IsdhisProgress/{id} {
+      allow get: if isdhisAdmin() || (isdhisSignedIn() && id.matches(request.auth.uid + '_.+'));
+      allow list: if isdhisAdmin() || (isdhisSignedIn() && resource.data.uid == request.auth.uid);
+      allow create, update: if isdhisStudent()
+        && request.resource.data.uid == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.courseId
+        && isdhisEnrolled(request.resource.data.courseId);
+      allow delete: if isdhisAdmin();
+    }
+
+    // One active device per student. A student can claim a device only when none is active;
+    // afterwards only the admin can change activeDeviceId.
+    match /IsdhisDevices/{uid} {
+      allow read: if isdhisAdmin() || isdhisOwns(uid);
+      allow create: if isdhisStudent() && isdhisOwns(uid);
+      allow update: if isdhisAdmin() || (isdhisOwns(uid) && (
+        resource.data.activeDeviceId == ''
+        || request.resource.data.activeDeviceId == resource.data.activeDeviceId
+      ));
+      allow delete: if isdhisAdmin();
+    }
+
+    // Certificates: publicly verifiable by ID; issued only when every lesson is completed.
+    match /IsdhisCertificates/{id} {
+      allow get: if true;
+      allow list: if isdhisAdmin() || (isdhisSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isdhisAdmin() || (
+        isdhisStudent()
+        && request.resource.data.uid == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.courseId
+        && isdhisEnrolled(request.resource.data.courseId)
+        && get(isdhisDoc('IsdhisProgress', id)).data.completed.size()
+           >= get(isdhisDoc('IsdhisCourses', request.resource.data.courseId)).data.lessonCount
+      );
+      allow update, delete: if isdhisAdmin();
+    }
+
+    match /IsdhisReviews/{id} {
+      allow read: if true;
+      allow create, update: if isdhisStudent()
+        && request.resource.data.uid == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.courseId
+        && isdhisEnrolled(request.resource.data.courseId)
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1 && request.resource.data.rating <= 5;
+      allow delete: if isdhisAdmin() || (isdhisSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // Coupons: a code can be checked by its exact ID, but the list of codes is admin-only.
+    match /IsdhisCoupons/{code} {
+      allow get: if true;
+      allow list, write: if isdhisAdmin();
+    }
+
+    match /IsdhisNotifications/{id} {
+      allow read: if isdhisAdmin() || (isdhisSignedIn() && resource.data.to == request.auth.uid);
+      allow create: if isdhisAdmin() || (isdhisStudent() && request.resource.data.to == 'admin');
+      allow update: if isdhisAdmin() || (
+        isdhisSignedIn() && resource.data.to == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+      );
+      allow delete: if isdhisAdmin();
+    }
+
+    match /IsdhisMessages/{id} {
+      allow create: if request.resource.data.message is string && request.resource.data.message.size() < 5000;
+      allow read, update, delete: if isdhisAdmin();
+    }
+
+    // Outbox for the "Trigger Email from Firestore" extension
+    match /IsdhisMail/{id} {
+      allow read, write: if isdhisAdmin();
+    }
+  }
+}
