@@ -7,6 +7,7 @@ import { adminDb } from '../firebase';
 import { C } from '../lib/db';
 import { useList } from '../lib/hooks';
 import { Brand, Loader } from '../components/UI';
+import ErrorBoundary from '../components/ErrorBoundary';
 import AdminDashboard from './Dashboard';
 import CoursesAdmin from './Courses';
 import LessonsAdmin from './Lessons';
@@ -62,6 +63,7 @@ export default function AdminLayout() {
       <main className="admin-main">
         <AnimatePresence mode="wait">
           <motion.div key={loc.pathname.split('/')[2] || 'dash'} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }}>
+            <ErrorBoundary key={loc.pathname}>
             <Routes location={loc}>
               <Route index element={<AdminDashboard />} />
               <Route path="courses" element={<CoursesAdmin />} />
@@ -74,6 +76,7 @@ export default function AdminLayout() {
               <Route path="settings" element={<SettingsAdmin />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Routes>
+            </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
       </main>

@@ -211,7 +211,7 @@ function LessonView({ lesson, watermark, onEnded }) {
     } catch (e) { toast(errMsg(e), 'err'); }
   };
   const openImg = async (f) => {
-    try { setImg({ name: f.name, url: await getDownloadURL(ref(storage, f.path)) }); } catch (e) { toast(errMsg(e), 'err'); }
+    try { setImg({ name: f.name, url: f.url || (await getDownloadURL(ref(storage, f.path))) }); } catch (e) { toast(errMsg(e), 'err'); }
   };
 
   return (
@@ -222,6 +222,8 @@ function LessonView({ lesson, watermark, onEnded }) {
             <video
               ref={vref}
               src={video}
+              poster={lesson.posterUrl || undefined}
+              preload="metadata"
               controls
               controlsList="nodownload noremoteplayback"
               disablePictureInPicture
@@ -255,9 +257,9 @@ function LessonView({ lesson, watermark, onEnded }) {
 }
 
 function LessonImages({ images, onOpen }) {
-  const [urls, setUrls] = useState({});
+  const [urls, setUrls] = useState(() => Object.fromEntries(images.filter((f) => f.url).map((f) => [f.path, f.url])));
   useEffect(() => {
-    images.forEach((f) => getDownloadURL(ref(storage, f.path)).then((u) => setUrls((x) => ({ ...x, [f.path]: u }))).catch(() => {}));
+    images.filter((f) => !f.url).forEach((f) => getDownloadURL(ref(storage, f.path)).then((u) => setUrls((x) => ({ ...x, [f.path]: u }))).catch(() => {}));
   }, [images.map((i) => i.path).join()]);
   return (
     <div className="lesson-images">

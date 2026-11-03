@@ -80,10 +80,10 @@ export function Contact() {
   return (
     <section className="section" style={{ paddingTop: 60 }}>
       <div className="container">
-        <span className="eyebrow">Contact</span>
-        <h1 className="display" style={{ fontSize: 'clamp(44px, 8vw, 110px)', margin: '14px 0 40px', fontWeight: 300 }}>
-          <SplitWords text="Let's" /> <span className="gold-text" style={{ fontStyle: 'italic' }}><SplitWords text="talk." delay={0.1} /></span>
-        </h1>
+        <div className="page-head" style={{ marginTop: -60 }}>
+          <span className="eyebrow">Contact</span>
+          <h1 className="display"><SplitWords text="Let's" /> <span className="gold-text" style={{ fontStyle: 'italic' }}><SplitWords text="talk." delay={0.1} /></span></h1>
+        </div>
         <div className="two-col" style={{ gridTemplateColumns: '1fr 1.3fr', gap: 30 }}>
           <Reveal>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

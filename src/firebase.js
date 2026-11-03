@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const env = import.meta.env;
@@ -25,12 +25,23 @@ export const firebaseConfig = {
 const studentApp = initializeApp(firebaseConfig, 'isdhis-student');
 const adminApp = initializeApp(firebaseConfig, 'isdhis-admin');
 
+/* Offline cache: courses, settings and lessons load instantly from the browser on repeat visits. */
+function fastDb(app) {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    return getFirestore(app);
+  }
+}
+
 export const auth = getAuth(studentApp);
-export const db = getFirestore(studentApp);
+export const db = fastDb(studentApp);
 export const storage = getStorage(studentApp);
 
 export const adminAuth = getAuth(adminApp);
-export const adminDb = getFirestore(adminApp);
+export const adminDb = fastDb(adminApp);
 export const adminStorage = getStorage(adminApp);
 
 setPersistence(auth, browserLocalPersistence).catch(() => {});

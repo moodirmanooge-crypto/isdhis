@@ -41,17 +41,19 @@ export function Empty({ icon: Icon, title, children }) {
   );
 }
 
-export function Modal({ open, onClose, title, children, wide }) {
+export function Modal({ open, onClose, title, children, wide, locked }) {
+  // locked = an upload is running → clicking outside / Escape must not close and lose it
+  const close = () => { if (!locked) onClose?.(); };
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    const onKey = (e) => e.key === 'Escape' && !locked && onClose?.();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, locked]);
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="modal-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
+        <motion.div className="modal-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={close}>
           <motion.div
             className="modal"
             style={wide ? { width: 'min(980px, 100%)' } : undefined}
@@ -63,7 +65,7 @@ export function Modal({ open, onClose, title, children, wide }) {
           >
             <div className="modal-head">
               <h3>{title}</h3>
-              <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={18} /></button>
+              <button className="icon-btn" onClick={close} disabled={locked} aria-label="Close"><X size={18} /></button>
             </div>
             {children}
           </motion.div>

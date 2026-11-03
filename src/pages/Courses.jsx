@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Search, BookOpen, ArrowUpRight } from 'lucide-react';
-import CourseCard from '../components/CourseCard';
+import { CourseLayout } from '../components/CourseCard';
 import { Loader, Empty } from '../components/UI';
 import { SplitWords, Reveal } from '../components/Motion';
 import { usePublishedCourses, useCategories } from '../lib/hooks';
@@ -40,12 +40,17 @@ export default function Courses() {
   };
 
   return (
-    <section className="section" style={{ paddingTop: 60 }}>
+    <section style={{ paddingBottom: 90 }}>
       <div className="container">
-        <span className="eyebrow">Catalogue</span>
-        <h1 className="display" style={{ fontSize: 'clamp(44px, 8vw, 110px)', margin: '14px 0 30px', fontWeight: 300 }}>
-          <SplitWords text="All" /> <span className="gold-text" style={{ fontStyle: 'italic' }}><SplitWords text="Courses" delay={0.1} /></span>
-        </h1>
+        <div className="page-head">
+          <div className="row-end">
+            <div>
+              <span className="eyebrow">Catalogue</span>
+              <h1 className="display"><SplitWords text="All" /> <span className="gold-text" style={{ fontStyle: 'italic' }}><SplitWords text="Courses" delay={0.1} /></span></h1>
+            </div>
+            <p className="muted" style={{ maxWidth: 380, margin: 0 }}>{courses.length} course{courses.length === 1 ? '' : 's'} · video, PDF iyo sawirro · hal lacag, weligaa.</p>
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 22 }}>
           <div style={{ position: 'relative', flex: '1 1 280px' }}>
             <Search size={17} style={{ position: 'absolute', left: 15, top: '50%', translate: '0 -50%', color: 'var(--muted)' }} />
@@ -71,14 +76,8 @@ export default function Courses() {
         {loading ? (
           <Loader />
         ) : list.length ? (
-          <motion.div className="grid" layout>
-            <AnimatePresence mode="popLayout">
-              {list.map((c, i) => (
-                <motion.div key={c.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.85, filter: 'blur(8px)' }} transition={{ duration: 0.45 }}>
-                  <CourseCard course={c} index={i} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+          <motion.div key={cat + sort + q} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <CourseLayout courses={list} />
           </motion.div>
         ) : (
           <Empty icon={BookOpen} title="No courses found">Isku day erey kale ama category kale.</Empty>
@@ -104,12 +103,12 @@ export function Categories() {
   }, [cats, courses]);
 
   return (
-    <section className="section" style={{ paddingTop: 60 }}>
+    <section style={{ paddingBottom: 90 }}>
       <div className="container">
-        <span className="eyebrow">Explore</span>
-        <h1 className="display" style={{ fontSize: 'clamp(44px, 8vw, 110px)', margin: '14px 0 40px', fontWeight: 300 }}>
-          <SplitWords text="Categories" />
-        </h1>
+        <div className="page-head">
+          <span className="eyebrow">Explore</span>
+          <h1 className="display"><SplitWords text="Categories" /></h1>
+        </div>
         {loading ? (
           <Loader />
         ) : names.length ? (

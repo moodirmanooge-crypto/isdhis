@@ -1,27 +1,39 @@
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
+import { clean } from '../lib/utils';
 
 /* Reveal — content rises out of a clipped mask with a blur-to-sharp focus pull */
+/*
+ * The OUTER element is what the browser watches (never clipped — a clipped element is
+ * reported as "not visible" by Chrome on phones, which left whole sections empty).
+ * The INNER element does the mask/blur animation, triggered through variants.
+ */
+const revealInner = {
+  hidden: (y) => ({ opacity: 0, y, filter: 'blur(10px)', clipPath: 'inset(-50% -50% 100% -50%)' }),
+  show: { opacity: 1, y: 0, filter: 'blur(0px)', clipPath: 'inset(-50% -50% -50% -50%)' },
+};
 export function Reveal({ children, delay = 0, y = 40, className = '', as = 'div' }) {
   const M = motion[as] || motion.div;
   return (
-    <M
-      className={className}
-      initial={{ opacity: 0, y, filter: 'blur(10px)', clipPath: 'inset(0 0 100% 0)' }}
-      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', clipPath: 'inset(0 0 0% 0)' }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 1, delay, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
+    <M className={className} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.05 }}>
+      <motion.div
+        custom={y}
+        variants={revealInner}
+        transition={{ duration: 1, delay, ease: [0.22, 1, 0.36, 1] }}
+        style={{ height: '100%' }}
+      >
+        {children}
+      </motion.div>
     </M>
   );
 }
 
 /* SplitWords — headline words slide up one by one from below a mask */
-export function SplitWords({ text, delay = 0, className = '' }) {
+export function SplitWords({ text: raw, delay = 0, className = '' }) {
+  const text = clean(raw);
   return (
-    <span className={className} aria-label={text}>
-      {text.split(' ').map((w, i) => (
+    <span className={`split-safe ${className}`} aria-label={text}>
+      {text.split(/\s+/).map((w, i) => (
         <span key={i} style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'top', paddingBottom: '0.08em' }}>
           <motion.span
             aria-hidden="true"

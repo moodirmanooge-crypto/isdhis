@@ -51,3 +51,6 @@ export const errMsg = (e) => {
   };
   return map[code] || e?.message || 'Wax khalad ah ayaa dhacay.';
 };
+
+/* Remove invisible right-to-left marks (they flip word order, e.g. "Management Business"). */
+export const clean = (s = '') => String(s || '').replace(/[‎‏‪-‮⁦-⁩؜]/g, '').trim();

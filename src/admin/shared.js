@@ -9,10 +9,70 @@ export function uploadFile(path, file, onProgress) {
     const task = uploadBytesResumable(ref(adminStorage, path), file, { contentType: file.type || undefined });
     task.on(
       'state_changed',
-      (s) => onProgress?.(Math.round((s.bytesTransferred / s.totalBytes) * 100)),
+      (s) =>
+        onProgress?.(Math.round((s.bytesTransferred / s.totalBytes) * 100), {
+          sent: s.bytesTransferred,
+          total: s.totalBytes,
+        }),
       reject,
       () => resolve(path)
     );
+  });
+}
+
+export const mb = (b) => `${(b / 1048576).toFixed(1)} MB`;
+
+/* Grab one frame of a video file in the browser → JPEG thumbnail (shown locked on the course page). */
+export function captureVideoFrame(file, width = 960) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement('video');
+    let done = false;
+    const finish = (blob) => {
+      if (done) return;
+      done = true;
+      URL.revokeObjectURL(url);
+      resolve(blob);
+    };
+    const timer = setTimeout(() => finish(null), 15000);
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = 'auto';
+    v.src = url;
+    v.onloadedmetadata = () => {
+      v.currentTime = Math.min(2, (v.duration || 4) / 3);
+    };
+    v.onseeked = () => {
+      try {
+        const scale = width / (v.videoWidth || width);
+        const c = document.createElement('canvas');
+        c.width = Math.round((v.videoWidth || width) * scale);
+        c.height = Math.round((v.videoHeight || width * 0.5625) * scale);
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        c.toBlob((b) => { clearTimeout(timer); finish(b); }, 'image/jpeg', 0.82);
+      } catch {
+        clearTimeout(timer);
+        finish(null);
+      }
+    };
+    v.onerror = () => { clearTimeout(timer); finish(null); };
+  });
+}
+
+export const fmtDuration = (s) => {
+  if (!s || !isFinite(s)) return '';
+  const m = Math.floor(s / 60), sec = Math.round(s % 60);
+  return `${m}:${String(sec).padStart(2, '0')}`;
+};
+
+export function videoDuration(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(v.duration || 0); };
+    v.onerror = () => { URL.revokeObjectURL(url); resolve(0); };
+    v.src = url;
   });
 }
 

@@ -107,3 +107,13 @@ firebase deploy --only hosting:isdhis-academy
 3. Courses → Add New Course → Status: Published.
 4. Lessons → dooro course → Add Lesson (video, PDF, images).
 5. Furo website-ka — course-ku wuxuu ka muuqanayaa Home & All Courses.
+
+---
+
+## 8. Cilad-bixin (Troubleshooting)
+
+- **Page-ku wuu madoobaadaa / "0 lessons" khaldan / ereyo rogan** → Google Translate ayaa sababay. Website-ka hadda wuu xannibayaa turjumaadda. Haddii Chrome weli turjumo: calaamadda address bar-ka → "Show original" / "Never translate this site".
+- **"This login feature is not enabled"** marka arday is-diiwaan geliyo → Firebase Console → Authentication → Sign-in method → **Email/Password → Enable**.
+- **Website-ku waa gaabis** → `npm run dev` waa qaab horumarineed oo gaabis ah. Si aad u aragto xawaaraha dhabta ah: `npm run build && npm run preview`, ama deploy garee.
+- **Video upload-ku wuu gaabis yahay** → xawaaraha internet-kaaga (upload) ayuu ku xiran yahay. Ku compress garee video-ga 720p (HandBrake, "Fast 720p30") — inta badan 5-10 jeer ayuu yaraadaa. Ha xirin tab-ka inta upload-ku socdo.
+- **Sawirrada casharrada hore** ee aan bogga course-ka ka muuqan → Admin → Lessons → Edit → Save (link-ga public-ka ah ayaa la keydinayaa). Sidoo kale cusbooneysii Storage rules-ka (`firebase-rules/storage.isdhis.rules`).
